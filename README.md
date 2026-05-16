@@ -52,15 +52,17 @@ and the first inbound bytes:
 
 ```mermaid
 flowchart TD
-    Conn([Accepted connection]) --> TLS{TLS<br/>configured?}
-    TLS -- yes --> ALPN{ALPN<br/>result}
-    ALPN -- h2 --> H2TLS[HTTP/2 over TLS]
-    ALPN -- "http/1.1<br/>(or none)" --> H1TLS[HTTP/1.1 over TLS]
-    TLS -- no --> Peek{First bytes<br/>= H2 preface?}
-    Peek -- yes --> H2C[HTTP/2 cleartext<br/>prior knowledge]
-    Peek -- no --> H1U[HTTP/1.1 with<br/>H2C upgrade support]
-    H1U -. "Upgrade: h2c request" .-> H2C2[HTTP/2 cleartext<br/>after upgrade]
-    H1U -. "regular request" .-> H1[HTTP/1.1 cleartext]
+    subgraph Neg[" "]
+        Conn([Accepted connection]) --> TLS{TLS<br/>configured?}
+        TLS -- yes --> ALPN{ALPN<br/>result}
+        ALPN -- h2 --> H2TLS[HTTP/2 over TLS]
+        ALPN -- "http/1.1<br/>(or none)" --> H1TLS[HTTP/1.1 over TLS]
+        TLS -- no --> Peek{First bytes<br/>= H2 preface?}
+        Peek -- yes --> H2C[HTTP/2 cleartext<br/>prior knowledge]
+        Peek -- no --> H1U[HTTP/1.1 with<br/>H2C upgrade support]
+        H1U -. "Upgrade: h2c request" .-> H2C2[HTTP/2 cleartext<br/>after upgrade]
+        H1U -. "regular request" .-> H1[HTTP/1.1 cleartext]
+    end
 ```
 
 These five negotiation paths converge into two final pipeline shapes — one for

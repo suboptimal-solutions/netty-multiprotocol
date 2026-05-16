@@ -21,8 +21,13 @@
 
     <developers>
         <developer>
+            <name>Ivan Fedorenkov</name>
+            <url>https://github.com/ivan-fedorenkov</url>
+        </developer>
+
+        <developer>
             <name>Dmitry Petrov</name>
-            <url>https://github.com/suboptimal-solutions</url>
+            <url>https://github.com/Fyzu</url>
         </developer>
     </developers>
 
