@@ -16,7 +16,7 @@ import io.netty.handler.ssl.SslContext;
  *
  * <pre>{@code
  * AppProtocolRegistry registry = new AppProtocolRegistry();
- * registry.register("/twirp/*", new TwirpProtocol(...));
+ * registry.register("/dxlink/*", new DxLinkProtocol(...));
  * registry.register("/", new RestProtocol(...));
  *
  * ChannelInitializer<Channel> initializer = NettyMultiprotocol.builder()

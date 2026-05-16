@@ -9,7 +9,7 @@
     <packaging>jar</packaging>
 
     <name>netty-multiprotocol</name>
-    <description>Multiplex multiple application-layer protocols on a single Netty server port (HTTP/1.1, H2C, HTTP/2 via TLS+ALPN).</description>
+    <description>Multiplex multiple application-layer protocols on a single Netty server port (HTTP/1.1, H2C, HTTP/2 via TLS+ALPN). Requires Netty 4.2.x at runtime (declared with 'provided' scope).</description>
     <url>https://github.com/suboptimal-solutions/netty-multiprotocol</url>
 
     <licenses>
@@ -63,17 +63,26 @@
     </dependencyManagement>
 
     <dependencies>
+        <!--
+            Netty is declared with 'provided' scope so consumers can pick any
+            compatible 4.2.x version without conflicting with the rest of their
+            classpath. The library is built against ${netty.version}; any 4.2.x
+            release should be binary-compatible at runtime.
+        -->
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http2</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-handler</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.jspecify</groupId>

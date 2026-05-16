@@ -13,8 +13,8 @@ import java.util.Map;
  * Three pattern kinds are supported, mirroring the Servlet 3.1 spec (section 12.2):
  * <ul>
  *   <li><b>Exact</b> - e.g. {@code "/healthz"}. Matches this path and nothing else.</li>
- *   <li><b>Path prefix</b> - e.g. {@code "/twirp/*"}. Matches {@code /twirp},
- *       {@code /twirp/}, and any path underneath. The longest matching prefix wins.</li>
+ *   <li><b>Path prefix</b> - e.g. {@code "/dxlink/*"}. Matches {@code /dxlink},
+ *       {@code /dxlink/}, and any path underneath. The longest matching prefix wins.</li>
  *   <li><b>Default</b> - exactly {@code "/"}. Fallback for anything not matched above.</li>
  * </ul>
  *
