@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 class Http2StreamDispatchHandlerTest {
     private EmbeddedChannel channel;
 
@@ -151,7 +152,8 @@ class Http2StreamDispatchHandlerTest {
     static class AlwaysOkHttp1Handler extends SimpleChannelInboundHandler<LastHttpContent> {
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, LastHttpContent msg) {
-            ctx.writeAndFlush(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK));
+            var body = Unpooled.copiedBuffer("ok", java.nio.charset.StandardCharsets.UTF_8);
+            ctx.writeAndFlush(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, body));
         }
     }
 
