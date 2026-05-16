@@ -23,7 +23,7 @@ import io.netty.handler.ssl.SslContext;
  *     .sslContext(sslContext)          // optional; plaintext if null
  *     .registry(registry)
  *     .onHttp1ChannelConfigured(p ->
- *         p.addBefore(HttpPipelines.DISPATCH_HANDLER, "accessLog", new MyAccessLogHandler()))
+ *         p.addLast("accessLog", new MyAccessLogHandler()))
  *     .build();
  *
  * new ServerBootstrap()
@@ -39,22 +39,23 @@ import io.netty.handler.ssl.SslContext;
  * request id, metrics, idle-state timeouts) without subclassing the initializer:
  *
  * <ul>
- *   <li>{@link Builder#onHttp1ChannelConfigured} - runs after {@code HttpServerCodec}
- *       and {@code Http1DispatchHandler} are installed; the channel handles HTTP/1.1
- *       traffic over the lifetime of the connection (keep-alive). Handlers in this
- *       zone see parsed {@code HttpRequest}/{@code HttpResponse} objects.</li>
+ *   <li>{@link Builder#onHttp1ChannelConfigured} - runs when HTTP/1.1 is confirmed,
+ *       before {@link HttpPipelineConfigurer#DISPATCH_HANDLER} is installed. Handlers added
+ *       here persist across keep-alive requests on the same connection and see parsed
+ *       {@code HttpRequest}/{@code HttpResponse} objects. On ALPN connections the
+ *       customizer runs eagerly during pipeline setup; on plaintext with H2C upgrade
+ *       support it is deferred until the first request arrives without an
+ *       {@code Upgrade: h2c} header.</li>
  *   <li>{@link Builder#onHttp2ChannelConfigured} - runs once per HTTP/2 parent
  *       channel, after the frame codec and multiplex handler. Operates on
- *       {@code Http2Frame}s; useful for connection-scoped concerns.</li>
+ *       {@code Http2Frame}s; useful for connection-scoped concerns. On plaintext with
+ *       H2C upgrade support it is deferred until the upgrade handshake completes.</li>
  *   <li>{@link Builder#onHttp2StreamChannelConfigured} - runs once per HTTP/2 stream
- *       child channel. The pipeline only contains {@code Http2StreamDispatchHandler}
- *       at this point; the codec ({@code Http2StreamFrameToHttpObjectCodec}) is only
- *       installed later if the resolved protocol falls back to HTTP/1.1. Handlers
- *       in this zone therefore see raw {@code Http2StreamFrame}s by default.</li>
+ *       child channel, before {@link HttpPipelineConfigurer#DISPATCH_HANDLER} is installed.
+ *       The codec ({@code Http2StreamFrameToHttpObjectCodec}) is only added later if
+ *       the resolved protocol falls back to HTTP/1.1, so handlers in this zone see
+ *       raw {@code Http2StreamFrame}s by default.</li>
  * </ul>
- *
- * Use {@link HttpPipelines#DISPATCH_HANDLER} as a stable anchor for
- * {@code pipeline.addBefore} / {@code addAfter}.
  */
 public final class NettyMultiprotocol {
 

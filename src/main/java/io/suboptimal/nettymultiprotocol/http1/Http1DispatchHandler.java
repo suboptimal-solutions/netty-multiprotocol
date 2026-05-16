@@ -2,6 +2,7 @@ package io.suboptimal.nettymultiprotocol.http1;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -13,7 +14,6 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
@@ -22,10 +22,13 @@ import io.netty.util.ReferenceCountUtil;
 import io.suboptimal.nettymultiprotocol.AppChannelConfigurer;
 import io.suboptimal.nettymultiprotocol.AppProtocol;
 import io.suboptimal.nettymultiprotocol.AppProtocolRegistry;
-import io.suboptimal.nettymultiprotocol.HttpPipelines;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Dispatch handler for HTTP/1.1 pipelines.
@@ -45,6 +48,11 @@ import java.util.Map;
  *       handlers, clears {@code requestInFlight}, and makes the channel ready
  *       for the next request.</li>
  * </ol>
+ *
+ * <p>Per-request cleanup uses a snapshot of the pipeline taken at {@code handlerAdded}
+ * time. Handlers present at that moment are considered persistent (transport, codec,
+ * cross-cutting customizers); handlers added later by {@link AppChannelConfigurer#configure}
+ * are per-request and are removed after the response ends.
  *
  * <p>If the http1 configurer takes exclusive ownership of the channel, for
  * example after a WebSocket handshake means the channel is no longer HTTP/1.1,
@@ -74,8 +82,16 @@ public class Http1DispatchHandler extends ChannelDuplexHandler {
     // Request pipelining is not supported.
     private boolean requestInFlight = false;
 
+    // Snapshot of handler names present when this handler was added; used by cleanupPipeline.
+    private @Nullable Set<String> persistentHandlerNames;
+
     public Http1DispatchHandler(AppProtocolRegistry registry) {
         this.registry = registry;
+    }
+
+    @Override
+    public void handlerAdded(ChannelHandlerContext ctx) {
+        persistentHandlerNames = Set.copyOf(ctx.pipeline().names());
     }
 
     @Override
@@ -106,9 +122,6 @@ public class Http1DispatchHandler extends ChannelDuplexHandler {
                 ReferenceCountUtil.release(request);
                 return;
             }
-
-            removeHandler(ctx.pipeline(), HttpPipelines.H2C_UPGRADE_HANDLER);
-            removeHandler(ctx.pipeline(), HttpPipelines.H2C_UPGRADE_DETECTION_HANDLER);
 
             channelConfigurer.configure(ctx.channel());
 
@@ -159,29 +172,34 @@ public class Http1DispatchHandler extends ChannelDuplexHandler {
         ctx.close();
     }
 
-    private static void cleanupPipeline(ChannelPipeline pipeline) {
-        pipeline.forEach((Map.Entry<String, ChannelHandler> handlerEntry) -> {
-            ChannelHandler handler = handlerEntry.getValue();
-            if (!(handler instanceof HttpServerCodec || handler instanceof Http1DispatchHandler)) {
-                pipeline.remove(handler);
+    private void cleanupPipeline(ChannelPipeline pipeline) {
+        Set<String> baseline = persistentHandlerNames;
+        if (baseline == null) {
+            return;
+        }
+        List<ChannelHandler> toRemove = new ArrayList<>();
+        for (Map.Entry<String, ChannelHandler> entry : pipeline) {
+            if (!baseline.contains(entry.getKey())) {
+                toRemove.add(entry.getValue());
             }
-        });
+        }
+        for (ChannelHandler handler : toRemove) {
+            pipeline.remove(handler);
+        }
     }
 
-    private static void sendError(ChannelHandlerContext ctx, HttpResponseStatus status, String message) {
+    private void sendError(ChannelHandlerContext ctx, HttpResponseStatus status, String message) {
         ByteBuf body = ctx.alloc().buffer();
         body.writeBytes(message.getBytes(StandardCharsets.UTF_8));
 
         FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, body);
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, TYPE_UTF8);
         response.headers().set(HttpHeaderNames.CONTENT_LENGTH, String.valueOf(body.readableBytes()));
-        ctx.writeAndFlush(response);
-    }
+        HttpUtil.setKeepAlive(response, keepAliveConnection);
 
-    private static void removeHandler(ChannelPipeline pipeline, String handlerName) {
-        ChannelHandler handler = pipeline.get(handlerName);
-        if (handler != null) {
-            pipeline.remove(handler);
+        ChannelFuture promise = ctx.writeAndFlush(response);
+        if (!keepAliveConnection) {
+            promise.addListener(ChannelFutureListener.CLOSE);
         }
     }
 }

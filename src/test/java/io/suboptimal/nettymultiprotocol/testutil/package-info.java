@@ -1,4 +1,4 @@
 @NullMarked
-package io.suboptimal.nettymultiprotocol.http1;
+package io.suboptimal.nettymultiprotocol.testutil;
 
 import org.jspecify.annotations.NullMarked;

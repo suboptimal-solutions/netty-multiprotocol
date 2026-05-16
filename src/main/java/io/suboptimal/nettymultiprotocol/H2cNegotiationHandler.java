@@ -5,10 +5,8 @@ import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import org.jspecify.annotations.Nullable;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 import static io.netty.buffer.Unpooled.unreleasableBuffer;
 import static io.netty.handler.codec.http2.Http2CodecUtil.connectionPrefaceBuf;
@@ -21,19 +19,10 @@ class H2cNegotiationHandler extends ByteToMessageDecoder {
 
     private static final ByteBuf CONNECTION_PREFACE = unreleasableBuffer(connectionPrefaceBuf()).asReadOnly();
 
-    private final AppProtocolRegistry registry;
-    private final @Nullable Consumer<ChannelPipeline> http1Customizer;
-    private final @Nullable Consumer<ChannelPipeline> http2Customizer;
-    private final @Nullable Consumer<ChannelPipeline> http2StreamCustomizer;
+    private final HttpPipelineConfigurer configurer;
 
-    H2cNegotiationHandler(AppProtocolRegistry registry,
-                          @Nullable Consumer<ChannelPipeline> http1Customizer,
-                          @Nullable Consumer<ChannelPipeline> http2Customizer,
-                          @Nullable Consumer<ChannelPipeline> http2StreamCustomizer) {
-        this.registry = registry;
-        this.http1Customizer = http1Customizer;
-        this.http2Customizer = http2Customizer;
-        this.http2StreamCustomizer = http2StreamCustomizer;
+    H2cNegotiationHandler(HttpPipelineConfigurer configurer) {
+        this.configurer = configurer;
     }
 
     @Override
@@ -43,18 +32,11 @@ class H2cNegotiationHandler extends ByteToMessageDecoder {
         ChannelPipeline pipeline = ctx.pipeline();
 
         if (!ByteBufUtil.equals(CONNECTION_PREFACE, CONNECTION_PREFACE.readerIndex(),
-                in, in.readerIndex(), bytesRead))
-        {
-            HttpPipelines.http1(pipeline, registry, true);
-            if (http1Customizer != null) {
-                http1Customizer.accept(pipeline);
-            }
+                in, in.readerIndex(), bytesRead)) {
+            configurer.installHttp1(pipeline, true);
             pipeline.remove(this);
         } else if (bytesRead == prefaceLength) {
-            HttpPipelines.http2(pipeline, registry, http2StreamCustomizer);
-            if (http2Customizer != null) {
-                http2Customizer.accept(pipeline);
-            }
+            configurer.installHttp2(pipeline);
             pipeline.remove(this);
         }
     }

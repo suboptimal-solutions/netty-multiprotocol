@@ -14,7 +14,8 @@ right protocol implementation by URI pattern.
 - URI-pattern routing (exact, path-prefix, default) following Servlet 3.1 semantics.
 - Per-protocol pipeline configuration via `AppChannelConfigurer`.
 - Optional `ChannelPipeline` customizers for cross-cutting handlers
-  (access log, metrics, idle-state timeouts, request id).
+  (access log, metrics, idle-state timeouts, request id) that persist across
+  HTTP/1.1 keep-alive requests.
 - No reflection, no annotations, no framework lock-in - just a `ChannelInitializer`
   you wire into your own `ServerBootstrap`.
 
@@ -29,7 +30,7 @@ ChannelInitializer<Channel> initializer = NettyMultiprotocol.builder()
     .sslContext(sslContext)          // optional; plaintext if null
     .registry(registry)
     .onHttp1ChannelConfigured(p ->
-        p.addBefore(HttpPipelines.DISPATCH_HANDLER, "accessLog", new MyAccessLogHandler()))
+        p.addLast("accessLog", new MyAccessLogHandler()))
     .build();
 
 new ServerBootstrap()

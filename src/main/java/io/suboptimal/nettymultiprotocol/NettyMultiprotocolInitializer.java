@@ -13,10 +13,7 @@ import java.util.function.Consumer;
  */
 class NettyMultiprotocolInitializer extends ChannelInitializer<Channel> {
     private final @Nullable SslContext sslContext;
-    private final AppProtocolRegistry registry;
-    private final @Nullable Consumer<ChannelPipeline> http1Customizer;
-    private final @Nullable Consumer<ChannelPipeline> http2Customizer;
-    private final @Nullable Consumer<ChannelPipeline> http2StreamCustomizer;
+    private final HttpPipelineConfigurer configurer;
 
     NettyMultiprotocolInitializer(@Nullable SslContext sslContext,
                                   AppProtocolRegistry registry,
@@ -24,10 +21,7 @@ class NettyMultiprotocolInitializer extends ChannelInitializer<Channel> {
                                   @Nullable Consumer<ChannelPipeline> http2Customizer,
                                   @Nullable Consumer<ChannelPipeline> http2StreamCustomizer) {
         this.sslContext = sslContext;
-        this.registry = registry;
-        this.http1Customizer = http1Customizer;
-        this.http2Customizer = http2Customizer;
-        this.http2StreamCustomizer = http2StreamCustomizer;
+        this.configurer = new HttpPipelineConfigurer(registry, http1Customizer, http2Customizer, http2StreamCustomizer);
     }
 
     @Override
@@ -36,11 +30,9 @@ class NettyMultiprotocolInitializer extends ChannelInitializer<Channel> {
 
         if (sslContext != null) {
             pipeline.addLast(sslContext.newHandler(ch.alloc()));
-            pipeline.addLast(new AlpnNegotiationHandler(
-                    registry, http1Customizer, http2Customizer, http2StreamCustomizer));
+            pipeline.addLast(new AlpnNegotiationHandler(configurer));
         } else {
-            pipeline.addLast(new H2cNegotiationHandler(
-                    registry, http1Customizer, http2Customizer, http2StreamCustomizer));
+            pipeline.addLast(new H2cNegotiationHandler(configurer));
         }
     }
 }
