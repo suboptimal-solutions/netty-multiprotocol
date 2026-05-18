@@ -53,9 +53,8 @@ public class Http2StreamDispatchHandler extends SimpleChannelInboundHandler<Http
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Http2HeadersFrame headers) {
-        String path = headers.headers().path().toString();
-
-        AppProtocol protocol = registry.resolve(path);
+        CharSequence path = headers.headers().path();
+        AppProtocol protocol = path == null ? null : registry.resolve(path.toString());
         if (protocol == null) {
             sendError(ctx, HttpResponseStatus.NOT_FOUND, "No protocol registered for path: " + path);
             ReferenceCountUtil.release(headers);

@@ -68,7 +68,6 @@ public class Http3StreamDispatchHandler extends SimpleChannelInboundHandler<Http
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Http3HeadersFrame headers) {
         CharSequence path = headers.headers().path();
-
         AppProtocol protocol = path == null ? null : registry.resolve(path.toString());
         if (protocol == null) {
             sendError(ctx, HttpResponseStatus.NOT_FOUND, "No protocol registered for path: " + path);
