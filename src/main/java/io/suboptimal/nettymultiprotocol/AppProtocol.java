@@ -39,9 +39,15 @@ public interface AppProtocol {
     default @Nullable AppChannelConfigurer http2() { return null; }
 
     /**
-     * Reserved for HTTP/3 support. Currently never invoked by the library.
+     * Returns a configurer for HTTP/3 streams. The pipeline operates on raw
+     * {@code Http3RequestStreamFrame}s (no HTTP-object conversion). If this method returns
+     * {@code null} but {@link #http1()} does not, an HTTP/3 dispatcher will install
+     * {@code Http3FrameToHttpObjectCodec} and fall back to the HTTP/1.1 configurer.
      *
-     * @return configurer, or {@code null} if this protocol does not support HTTP/3
+     * <p>This method is invoked by {@code Http3StreamDispatchHandler} only when the user
+     * has wired an HTTP/3 (UDP/QUIC) server with that handler installed per request stream.
+     *
+     * @return configurer, or {@code null} if this protocol does not handle native HTTP/3 frames
      */
     default @Nullable AppChannelConfigurer http3() { return null; }
 }
